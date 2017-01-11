@@ -22,7 +22,8 @@
 
 - (BOOL)application:(UIApplication *)application
 didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-  return YES;
+    [FIRApp configure];
+    return YES;
 }
 
 @end

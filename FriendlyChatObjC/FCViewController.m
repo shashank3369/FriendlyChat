@@ -70,6 +70,7 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
 }
 
 - (void)configureDatabase {
+    //ref = FIRDatabaseReference
 }
 
 - (void)configureStorage {
@@ -185,6 +186,13 @@ didFinishPickingMediaWithInfo:(NSDictionary *)info {
 }
 
 - (IBAction)signOut:(UIButton *)sender {
+    FIRAuth *firebaseAuth = [FIRAuth auth];
+    NSError *signOutError;
+    BOOL status = [firebaseAuth signOut:&signOutError];
+    if (!status) {
+        NSLog(@"Error signing out: %@", signOutError);
+        return;
+    }
   [AppState sharedInstance].signedIn = false;
   [self dismissViewControllerAnimated:YES completion:NULL];
 }
