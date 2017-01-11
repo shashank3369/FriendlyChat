@@ -99,6 +99,7 @@
   [MeasurementHelper sendLoginEvent];
 
   [AppState sharedInstance].signedIn = YES;
+[AppState sharedInstance].displayName = [[user.email componentsSeparatedByString:@"@"] objectAtIndex:0];
   [[NSNotificationCenter defaultCenter] postNotificationName:NotificationKeysSignedIn
                                                       object:nil userInfo:nil];
   [self performSegueWithIdentifier:SeguesSignInToFp sender:nil];

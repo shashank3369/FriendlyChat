@@ -22,6 +22,7 @@
 
 @import Firebase;
 @import GoogleMobileAds;
+@import FirebaseDatabase;
 
 /**
  * AdMob ad unit IDs are not currently stored inside the google-services.plist file. Developers
@@ -67,10 +68,15 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
 }
 
 - (void)dealloc {
+    [[_ref child:@"messages"] removeObserverWithHandle: _refHandle];
 }
 
 - (void)configureDatabase {
-    //ref = FIRDatabaseReference
+    _ref = [[FIRDatabase database] reference];
+    _refHandle = [[_ref child:@"messages"] observeEventType:FIRDataEventTypeChildAdded withBlock:^(FIRDataSnapshot * _Nonnull snapshot) {
+        [_messages addObject:snapshot];
+        [_clientTable insertRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:_messages.count - 1 inSection:0]] withRowAnimation:UITableViewRowAnimationAutomatic];
+    }];
 }
 
 - (void)configureStorage {
@@ -123,6 +129,24 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(nonnull NSIndexPath *)indexPath {
   // Dequeue cell
   UITableViewCell *cell = [_clientTable dequeueReusableCellWithIdentifier:@"tableViewCell" forIndexPath:indexPath];
+
+    FIRDataSnapshot *messageSnapshot = _messages[indexPath.row];
+    NSDictionary<NSString *, NSString *> *message = messageSnapshot.value;
+    NSString *name = message[MessageFieldsname];
+    NSString *text = message[MessageFieldstext];
+    cell.textLabel.text = [NSString stringWithFormat: @"%@: %@", name, text];
+    cell.imageView.image = [UIImage imageNamed:@"ic_account_circle"];
+    
+    NSString *photoURL = message[MessageFieldsphotoURL];
+    if (photoURL) {
+        NSURL *URL = [NSURL URLWithString:photoURL];
+        if (URL) {
+            NSData *data = [NSData dataWithContentsOfURL:URL];
+            if (data) {
+                cell.imageView.image = [UIImage imageWithData:data];
+            }
+        }
+    }
   return cell;
 }
 
@@ -141,6 +165,8 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
   if (photoURL) {
     mdata[MessageFieldsphotoURL] = [photoURL absoluteString];
   }
+    
+    [[[_ref child:@"messages"] childByAutoId]setValue:mdata];
 }
 
 # pragma mark - Image Picker
