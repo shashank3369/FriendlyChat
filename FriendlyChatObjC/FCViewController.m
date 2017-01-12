@@ -80,6 +80,8 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
 }
 
 - (void)configureStorage {
+    NSString *storageUrl = [FIRApp defaultApp].options.storageBucket;
+    self.storageRef = [[FIRStorage storage] referenceForURL:storageUrl];
 }
 
 - (void)configureRemoteConfig {
@@ -137,16 +139,37 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
     cell.textLabel.text = [NSString stringWithFormat: @"%@: %@", name, text];
     cell.imageView.image = [UIImage imageNamed:@"ic_account_circle"];
     
-    NSString *photoURL = message[MessageFieldsphotoURL];
-    if (photoURL) {
-        NSURL *URL = [NSURL URLWithString:photoURL];
-        if (URL) {
-            NSData *data = [NSData dataWithContentsOfURL:URL];
-            if (data) {
+    NSString *imageURL = message[MessageFieldsimageURL];
+    if (imageURL) {
+        if ([imageURL hasPrefix:@"gs://"]) {
+            [[[FIRStorage storage] referenceForURL:imageURL] dataWithMaxSize:INT64_MAX completion:^(NSData * _Nullable data, NSError * _Nullable error) {
+                if (error) {
+                    NSLog(@"Error downloading: %@", error);
+                    return;
+                }
                 cell.imageView.image = [UIImage imageWithData:data];
+            }];
+        } else {
+            cell.imageView.image = [UIImage imageWithData:[NSData dataWithContentsOfURL:[NSURL URLWithString:imageURL]]];
+            
+        } cell.textLabel.text = [NSString stringWithFormat:@"sent by: %@",name];
+}
+    else {
+        NSString *text = message[MessageFieldstext];
+        cell.textLabel.text = [NSString stringWithFormat: @"%@: %@", name, text];
+        cell.imageView.image = [UIImage imageNamed:@"ic_account_circle"];
+        NSString *photoURL = message[MessageFieldsphotoURL];
+        if (photoURL) {
+            NSURL *URL = [NSURL URLWithString:photoURL];
+            if (URL) {
+                NSData *data = [NSData dataWithContentsOfURL:URL];
+                if (data) {
+                    cell.imageView.image = [UIImage imageWithData:data];
+                }
             }
         }
     }
+
   return cell;
 }
 
