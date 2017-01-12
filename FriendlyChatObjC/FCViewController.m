@@ -23,6 +23,7 @@
 @import Firebase;
 @import GoogleMobileAds;
 @import FirebaseDatabase;
+@import FirebaseStorage;
 
 /**
  * AdMob ad unit IDs are not currently stored inside the google-services.plist file. Developers
@@ -81,7 +82,7 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
 
 - (void)configureStorage {
     NSString *storageUrl = [FIRApp defaultApp].options.storageBucket;
-    self.storageRef = [[FIRStorage storage] referenceForURL:storageUrl];
+    self.storageRef = [[FIRStorage storage] referenceForURL:[NSString stringWithFormat:@"gs://%@", storageUrl]];
 }
 
 - (void)configureRemoteConfig {
@@ -135,10 +136,6 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
     FIRDataSnapshot *messageSnapshot = _messages[indexPath.row];
     NSDictionary<NSString *, NSString *> *message = messageSnapshot.value;
     NSString *name = message[MessageFieldsname];
-    NSString *text = message[MessageFieldstext];
-    cell.textLabel.text = [NSString stringWithFormat: @"%@: %@", name, text];
-    cell.imageView.image = [UIImage imageNamed:@"ic_account_circle"];
-    
     NSString *imageURL = message[MessageFieldsimageURL];
     if (imageURL) {
         if ([imageURL hasPrefix:@"gs://"]) {
@@ -151,9 +148,8 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
             }];
         } else {
             cell.imageView.image = [UIImage imageWithData:[NSData dataWithContentsOfURL:[NSURL URLWithString:imageURL]]];
-            
         } cell.textLabel.text = [NSString stringWithFormat:@"sent by: %@",name];
-}
+    }
     else {
         NSString *text = message[MessageFieldstext];
         cell.textLabel.text = [NSString stringWithFormat: @"%@: %@", name, text];
@@ -218,6 +214,16 @@ didFinishPickingMediaWithInfo:(NSDictionary *)info {
                                completionHandler:^(PHContentEditingInput *contentEditingInput, NSDictionary *info) {
                                  NSURL *imageFile = contentEditingInput.fullSizeImageURL;
                                  NSString *filePath = [NSString stringWithFormat:@"%@/%lld/%@", [FIRAuth auth].currentUser.uid, (long long)([[NSDate date] timeIntervalSince1970] * 1000.0), [referenceURL lastPathComponent]];
+                                   [[_storageRef child:filePath]
+                                    putFile:imageFile metadata:nil
+                                    completion:^(FIRStorageMetadata *metadata, NSError *error) {
+                                        if (error) {
+                                            NSLog(@"Error uploading: %@", error);
+                                            return;
+                                        }
+                                        [self sendMessage:@{MessageFieldsimageURL:[_storageRef child:metadata.path].description}];
+                                    }
+                                    ];
                              }
    ];
   } else {
@@ -227,6 +233,16 @@ didFinishPickingMediaWithInfo:(NSDictionary *)info {
     [NSString stringWithFormat:@"%@/%lld.jpg",
      [FIRAuth auth].currentUser.uid,
      (long long)([[NSDate date] timeIntervalSince1970] * 1000.0)];
+      FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+      metadata.contentType = @"image/jpeg";
+      [[_storageRef child:imagePath] putData:imageData metadata:metadata
+                                  completion:^(FIRStorageMetadata * _Nullable metadata, NSError * _Nullable error) {
+                                      if (error) {
+                                          NSLog(@"Error uploading: %@", error);
+                                          return;
+                                      }
+                                      [self sendMessage:@{MessageFieldsimageURL:[_storageRef child:metadata.path].description}];
+                                  }];
   }
 }
 
